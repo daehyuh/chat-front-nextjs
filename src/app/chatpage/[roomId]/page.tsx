@@ -41,27 +41,61 @@ export default function StompChatPage() {
   const { checkAuth } = useAuth()
 
   const connectWebsocket = () => {
-    if (stompClient?.connected) return
+    if (stompClient?.connected) {
+      console.log('Already connected')
+      return
+    }
 
-    const socket = new SockJS(`${process.env.NEXT_PUBLIC_API_BASE_URL}/connect`)
+    console.log('Connecting to WebSocket...', `${process.env.NEXT_PUBLIC_API_BASE_URL}/connect`)
+    
     const client = new Client({
-      webSocketFactory: () => socket as any,
+      brokerURL: undefined,
+      webSocketFactory: () => {
+        return new SockJS(`${process.env.NEXT_PUBLIC_API_BASE_URL}/connect`)
+      },
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
-      onConnect: () => {
-        client.subscribe(
+      debug: (str) => {
+        console.log('STOMP Debug:', str)
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: (frame) => {
+        console.log('Connected to STOMP:', frame)
+        
+        const subscription = client.subscribe(
           `/topic/chat/${roomId}`,
           (message) => {
-            console.log(message)
-            const parseMessage = JSON.parse(message.body)
-            setMessages(prev => [...prev, parseMessage])
-            scrollToBottom()
+            console.log('Received message:', message)
+            try {
+              const parseMessage = JSON.parse(message.body)
+              console.log('Parsed message:', parseMessage)
+              setMessages(prev => [...prev, parseMessage])
+              scrollToBottom()
+            } catch (e) {
+              console.error('Failed to parse message:', e)
+            }
           },
           {
             Authorization: `Bearer ${token}`
           }
         )
+        console.log('Subscribed to room:', roomId)
+      },
+      onStompError: (frame) => {
+        console.error('STOMP error:', frame.headers['message'])
+        console.error('Error details:', frame.body)
+      },
+      onWebSocketError: (event) => {
+        console.error('WebSocket error:', event)
+      },
+      onWebSocketClose: (event) => {
+        console.log('WebSocket closed:', event)
+      },
+      onDisconnect: () => {
+        console.log('Disconnected from STOMP')
       }
     })
     
@@ -70,16 +104,29 @@ export default function StompChatPage() {
   }
 
   const disconnectWebSocket = async () => {
-    await api.post(`/chat/room/${roomId}/read`)
+    try {
+      await api.post(`/chat/room/${roomId}/read`)
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error)
+    }
     
     if (stompClient?.connected) {
-      stompClient.unsubscribe(`/topic/chat/${roomId}`)
+      console.log('Disconnecting WebSocket...')
       stompClient.deactivate()
     }
   }
 
   const sendMessage = () => {
-    if (newMessage.trim() === '' || !stompClient) return
+    if (newMessage.trim() === '' || !stompClient) {
+      console.log('Cannot send message: empty or no client')
+      return
+    }
+
+    if (!stompClient.connected) {
+      console.error('WebSocket is not connected')
+      alert('연결이 끊어졌습니다. 페이지를 새로고침해주세요.')
+      return
+    }
 
     const message = {
       messageType: 'CHAT',
@@ -88,12 +135,21 @@ export default function StompChatPage() {
       token: token
     }
 
-    stompClient.publish({
-      destination: `/app/chat/${roomId}`,
-      body: JSON.stringify(message)
-    })
-
-    setNewMessage('')
+    console.log('Sending message:', message)
+    
+    try {
+      stompClient.publish({
+        destination: `/app/chat/${roomId}`,
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(message)
+      })
+      setNewMessage('')
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      alert('메시지 전송에 실패했습니다.')
+    }
   }
 
   const scrollToBottom = () => {
