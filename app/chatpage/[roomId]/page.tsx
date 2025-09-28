@@ -36,16 +36,29 @@ export default function StompChatPage() {
   useEffect(() => {
     const email = localStorage.getItem('email')
     setSenderEmail(email)
+    console.log('Email from localStorage:', email)
 
     const loadHistory = async () => {
-      const response = await axios.get(`/chat/history/${roomId}`)
-      setMessages(response.data)
+      try {
+        console.log('Loading chat history for room:', roomId)
+        const response = await axios.get(`/chat/history/${roomId}`)
+        console.log('Chat history loaded:', response.data)
+        setMessages(response.data)
+      } catch (error) {
+        console.error('Failed to load chat history:', error)
+      }
     }
 
     loadHistory()
-    connectWebSocket()
+    
+    // Delay WebSocket connection to ensure DOM is ready
+    const timer = setTimeout(() => {
+      console.log('Initiating WebSocket connection...')
+      connectWebSocket()
+    }, 100)
 
     return () => {
+      clearTimeout(timer)
       disconnectWebSocket()
     }
   }, [roomId])
@@ -55,26 +68,36 @@ export default function StompChatPage() {
   }, [messages])
 
   const connectWebSocket = () => {
-    if (stompClientRef.current?.active) return
+    if (stompClientRef.current?.active) {
+      console.log('WebSocket already connected')
+      return
+    }
 
+    const token = localStorage.getItem('token')
+    console.log('Token:', token ? 'Found' : 'Not found')
+    
     const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'
+    console.log('Connecting to WebSocket at:', `${apiUrl}/connect`)
+    
     const socket = new SockJS(`${apiUrl}/connect`)
     const client = new Client({
       webSocketFactory: () => socket as any,
       connectHeaders: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`
+        Authorization: `Bearer ${token}`
       },
       onConnect: () => {
-        console.log('Connected to WebSocket')
+        console.log('Connected to WebSocket successfully')
         setIsConnected(true)
+        console.log('Subscribing to topic:', `/topic/${roomId}`)
         client.subscribe(
           `/topic/${roomId}`,
           (message) => {
+            console.log('Received message:', message.body)
             const parseMessage = JSON.parse(message.body)
             setMessages(prev => [...prev, parseMessage])
           },
           {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            Authorization: `Bearer ${token}`
           }
         )
       },
@@ -83,8 +106,17 @@ export default function StompChatPage() {
         setIsConnected(false)
       },
       onStompError: (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message'])
-        console.error('Additional details: ' + frame.body)
+        console.error('STOMP Error occurred')
+        console.error('Error headers:', frame.headers)
+        console.error('Error message:', frame.headers['message'])
+        console.error('Error details:', frame.body)
+        setIsConnected(false)
+      },
+      onWebSocketError: (error) => {
+        console.error('WebSocket error:', error)
+      },
+      onWebSocketClose: (event) => {
+        console.error('WebSocket closed:', event)
       },
       debug: (str) => {
         console.log('STOMP: ' + str)
@@ -146,11 +178,22 @@ export default function StompChatPage() {
             <Typography variant="h5" component="h2">
               채팅
             </Typography>
-            <Chip
-              label={isConnected ? '연결됨' : '연결 중...'}
-              color={isConnected ? 'success' : 'warning'}
-              size="small"
-            />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Chip
+                label={isConnected ? '연결됨' : '연결 중...'}
+                color={isConnected ? 'success' : 'warning'}
+                size="small"
+              />
+              {!isConnected && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={connectWebSocket}
+                >
+                  재연결
+                </Button>
+              )}
+            </Box>
           </Box>
           
           <Paper
