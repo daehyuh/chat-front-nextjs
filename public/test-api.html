@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>Backend API Test</h1>
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testWebSocketInfo()">Test WebSocket Info</button>
+    <div id="log"></div>
+
+    <script>
+        function log(message) {
+            const div = document.getElementById('log');
+            div.innerHTML += '<p>' + new Date().toLocaleTimeString() + ' - ' + message + '</p>';
+            console.log(message);
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch('https://api.bob-dev.click/health');
+                const text = await response.text();
+                log('Health check: ' + response.status + ' - ' + text);
+            } catch (error) {
+                log('Health check failed: ' + error);
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const response = await fetch('https://api.bob-dev.click/member/doLogin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'a@a.com',
+                        password: 'a'
+                    })
+                });
+                const data = await response.json();
+                log('Login response: ' + JSON.stringify(data));
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userId', data.id);
+                    log('Token and userId saved to localStorage');
+                }
+            } catch (error) {
+                log('Login failed: ' + error);
+            }
+        }
+
+        async function testWebSocketInfo() {
+            try {
+                const response = await fetch('https://api.bob-dev.click/connect/info');
+                const data = await response.json();
+                log('WebSocket info: ' + JSON.stringify(data));
+            } catch (error) {
+                log('WebSocket info failed: ' + error);
+            }
+        }
+    </script>
+</body>
+</html>

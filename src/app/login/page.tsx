@@ -28,8 +28,11 @@ export default function LoginPage() {
       console.log(response)
 
       const token = response.data.token
+      const userId = response.data.id  // 백엔드에서 반환하는 userId
       const decoded = jwtDecode(token) as any
-      console.log(decoded)
+      console.log('Login response:', response.data)
+      console.log('Decoded token:', decoded)
+      console.log('UserId from response:', userId)
 
       const role = decoded.role
       const userEmail = decoded.sub
@@ -37,6 +40,12 @@ export default function LoginPage() {
       localStorage.setItem('role', role)
       localStorage.setItem('email', userEmail)
       localStorage.setItem('token', token)
+      localStorage.setItem('userId', userId ? userId.toString() : '')
+      
+      console.log('Stored userId:', localStorage.getItem('userId'))
+
+      // 로그인 상태 변경 이벤트 발생
+      window.dispatchEvent(new Event('authChange'))
 
       router.push('/')
     } catch (error) {

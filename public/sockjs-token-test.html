@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SockJS Test with Token</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+</head>
+<body>
+    <h1>SockJS Connection Test with Token</h1>
+    <button onclick="login()">1. Login First</button>
+    <button onclick="connectWithToken()">2. Connect with Token</button>
+    <button onclick="connectWithoutToken()">3. Connect without Token</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <div id="log"></div>
+
+    <script>
+        let sock = null;
+        
+        function log(message) {
+            const div = document.getElementById('log');
+            div.innerHTML += '<p>' + new Date().toLocaleTimeString() + ' - ' + message + '</p>';
+            console.log(message);
+        }
+
+        async function login() {
+            try {
+                const response = await fetch('https://api.bob-dev.click/member/doLogin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'a@a.com',
+                        password: 'a'
+                    })
+                });
+                const data = await response.json();
+                log('✅ Login successful');
+                log('Token: ' + data.token);
+                log('UserId: ' + data.id);
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('userId', data.id);
+            } catch (error) {
+                log('❌ Login failed: ' + error);
+            }
+        }
+
+        function connectWithToken() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                log('❌ No token found. Please login first.');
+                return;
+            }
+            
+            log('Connecting with token...');
+            
+            // URL에 토큰을 쿼리 파라미터로 추가
+            const url = `https://api.bob-dev.click/connect?token=${encodeURIComponent(token)}`;
+            log('URL: ' + url);
+            
+            sock = new SockJS(url);
+            
+            sock.onopen = function() {
+                log('✅ Connection opened WITH token');
+                
+                // STOMP CONNECT 프레임에 토큰 포함
+                const connectFrame = `CONNECT\naccept-version:1.2,1.1,1.0\nAuthorization:Bearer ${token}\nheart-beat:10000,10000\n\n\0`;
+                log('Sending STOMP CONNECT frame with Authorization header');
+                sock.send(connectFrame);
+            };
+            
+            sock.onmessage = function(e) {
+                log('📨 Message received: ' + e.data);
+            };
+            
+            sock.onerror = function(e) {
+                log('❌ Error: ' + JSON.stringify(e));
+            };
+            
+            sock.onclose = function(e) {
+                log('Connection closed - Code: ' + e.code + ', Reason: ' + e.reason);
+            };
+        }
+
+        function connectWithoutToken() {
+            log('Connecting WITHOUT token...');
+            
+            sock = new SockJS('https://api.bob-dev.click/connect');
+            
+            sock.onopen = function() {
+                log('✅ Connection opened WITHOUT token');
+                
+                // 토큰 없이 STOMP CONNECT 프레임
+                const connectFrame = "CONNECT\naccept-version:1.2,1.1,1.0\nheart-beat:10000,10000\n\n\0";
+                log('Sending STOMP CONNECT frame without Authorization');
+                sock.send(connectFrame);
+            };
+            
+            sock.onmessage = function(e) {
+                log('📨 Message received: ' + e.data);
+            };
+            
+            sock.onerror = function(e) {
+                log('❌ Error: ' + JSON.stringify(e));
+            };
+            
+            sock.onclose = function(e) {
+                log('Connection closed - Code: ' + e.code + ', Reason: ' + e.reason);
+            };
+        }
+
+        function disconnect() {
+            if (sock) {
+                sock.close();
+                sock = null;
+                log('Disconnected');
+            }
+        }
+    </script>
+</body>
+</html>

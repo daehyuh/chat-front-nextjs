@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   AppBar,
   Toolbar,
@@ -14,12 +15,32 @@ import {
 export default function Header() {
   const [isLogin, setIsLogin] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
+  const router = useRouter()
+
+  const checkLoginStatus = () => {
+    const token = localStorage.getItem('token')
+    const userEmail = localStorage.getItem('email')
+    setIsLogin(!!token)
+    setEmail(userEmail)
+  }
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      setIsLogin(true)
-      setEmail(localStorage.getItem('email'))
+    checkLoginStatus()
+
+    // storage 이벤트 리스너 추가 (다른 탭에서의 변경사항 감지)
+    window.addEventListener('storage', checkLoginStatus)
+    
+    // 커스텀 이벤트 리스너 추가 (같은 탭에서의 로그인 상태 변경 감지)
+    const handleAuthChange = () => checkLoginStatus()
+    window.addEventListener('authChange', handleAuthChange)
+
+    // 주기적으로 확인 (폴백)
+    const interval = setInterval(checkLoginStatus, 1000)
+
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus)
+      window.removeEventListener('authChange', handleAuthChange)
+      clearInterval(interval)
     }
   }, [])
 
