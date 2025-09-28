@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Container, Box, Card, CardContent, TextField, Button, Typography } from '@mui/material'
 import axios from '@/utils/axios'
 import { jwtDecode } from 'jwt-decode'
@@ -9,8 +8,6 @@ import { jwtDecode } from 'jwt-decode'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const router = useRouter()
-
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -20,7 +17,7 @@ export default function LoginPage() {
 
       const token = response.data.token
       
-      const decoded: any = jwtDecode(token)
+      const decoded = jwtDecode<{role: string, sub: string}>(token)
       console.log(decoded)
 
       const role = decoded.role
@@ -31,11 +28,12 @@ export default function LoginPage() {
       localStorage.setItem('token', token)
       
       window.location.href = '/'
-    } catch (error: any) {
+    } catch (error) {
       console.error('로그인 에러:', error)
-      if (error.response) {
-        alert(`로그인 실패: ${error.response.data.message || '서버 오류가 발생했습니다.'}`)
-      } else if (error.request) {
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as {response?: {data?: {message?: string}}}
+        alert(`로그인 실패: ${axiosError.response?.data?.message || '서버 오류가 발생했습니다.'}`)
+      } else if (error instanceof Error && 'request' in error) {
         alert('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.')
       } else {
         alert('로그인 중 오류가 발생했습니다.')

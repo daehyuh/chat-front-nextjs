@@ -3,12 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { AppBar, Toolbar, Container, Button, Box, Typography } from '@mui/material'
-import { useRouter } from 'next/navigation'
 
 export default function HeaderComponent() {
   const [isLogin, setIsLogin] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
     const token = localStorage.getItem('token')

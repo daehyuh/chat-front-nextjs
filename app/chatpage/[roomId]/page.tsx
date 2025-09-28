@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import {
   Container,
   Card,
@@ -24,7 +24,6 @@ interface Message {
 
 export default function StompChatPage() {
   const params = useParams()
-  const router = useRouter()
   const roomId = params.roomId as string
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
@@ -61,6 +60,7 @@ export default function StompChatPage() {
       clearTimeout(timer)
       disconnectWebSocket()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId])
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function StompChatPage() {
     
     const socket = new SockJS(`${apiUrl}/connect`)
     const client = new Client({
-      webSocketFactory: () => socket as any,
+      webSocketFactory: () => socket as WebSocket,
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
