@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 import {
   Container,
   Card,
@@ -34,12 +35,11 @@ export default function GroupChattingList() {
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false)
   const [newRoomTitle, setNewRoomTitle] = useState('')
   const router = useRouter()
+  const { checkAuth } = useAuth()
 
   const loadChatRoom = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/group/list`
-      )
+      const response = await api.get('/chat/room/group/list')
       setChatRoomList(response.data)
     } catch (error) {
       console.error('Failed to load chat rooms:', error)
@@ -48,9 +48,7 @@ export default function GroupChattingList() {
 
   const joinChatRoom = async (roomId: string) => {
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/group/${roomId}/join`
-      )
+      await api.post(`/chat/room/group/${roomId}/join`)
       router.push(`/chatpage/${roomId}`)
     } catch (error) {
       console.error('Failed to join chat room:', error)
@@ -59,8 +57,8 @@ export default function GroupChattingList() {
 
   const createChatRoom = async () => {
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/group/create?roomName=${newRoomTitle}`,
+      await api.post(
+        `/chat/room/group/create?roomName=${newRoomTitle}`,
         null
       )
       setShowCreateRoomModal(false)

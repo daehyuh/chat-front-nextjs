@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 import {
   Container,
   Card,
@@ -28,15 +29,14 @@ export default function MemberList() {
   const [memberList, setMemberList] = useState<Member[]>([])
   const [senderEmail, setSenderEmail] = useState<string | null>(null)
   const router = useRouter()
+  const { checkAuth } = useAuth()
 
   useEffect(() => {
     const loadData = async () => {
       setSenderEmail(localStorage.getItem('email'))
       
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/member/list`
-        )
+        const response = await api.get('/member/list')
         setMemberList(response.data)
       } catch (error) {
         console.error('Failed to load member list:', error)
@@ -48,8 +48,8 @@ export default function MemberList() {
 
   const startChat = async (otherMemberId: number) => {
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/private/create?otherMemberId=${otherMemberId}`
+      const response = await api.post(
+        `/chat/room/private/create?otherMemberId=${otherMemberId}`
       )
       const roomId = response.data
       router.push(`/chatpage/${roomId}`)

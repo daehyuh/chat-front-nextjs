@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import SockJS from 'sockjs-client'
 import { Client } from '@stomp/stompjs'
-import axios from 'axios'
+import api from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 import {
   Container,
   Card,
@@ -16,8 +17,14 @@ import {
 } from '@mui/material'
 
 interface ChatMessage {
-  senderEmail: string
-  message: string
+  messageId?: number
+  content?: string
+  senderId?: number
+  senderName?: string
+  senderEmail?: string
+  message?: string
+  timestamp?: string
+  messageType?: string
 }
 
 export default function StompChatPage() {
@@ -31,6 +38,7 @@ export default function StompChatPage() {
   const router = useRouter()
   const roomId = params.roomId as string
   const chatBoxRef = useRef<HTMLDivElement>(null)
+  const { checkAuth } = useAuth()
 
   const connectWebsocket = () => {
     if (stompClient?.connected) return
@@ -43,7 +51,7 @@ export default function StompChatPage() {
       },
       onConnect: () => {
         client.subscribe(
-          `/topic/${roomId}`,
+          `/topic/chat/${roomId}`,
           (message) => {
             console.log(message)
             const parseMessage = JSON.parse(message.body)
@@ -62,10 +70,10 @@ export default function StompChatPage() {
   }
 
   const disconnectWebSocket = async () => {
-    await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/${roomId}/read`)
+    await api.post(`/chat/room/${roomId}/read`)
     
     if (stompClient?.connected) {
-      stompClient.unsubscribe(`/topic/${roomId}`)
+      stompClient.unsubscribe(`/topic/chat/${roomId}`)
       stompClient.deactivate()
     }
   }
@@ -74,12 +82,14 @@ export default function StompChatPage() {
     if (newMessage.trim() === '' || !stompClient) return
 
     const message = {
-      senderEmail,
-      message: newMessage
+      messageType: 'CHAT',
+      roomId: parseInt(roomId),
+      content: newMessage,
+      token: token
     }
 
     stompClient.publish({
-      destination: `/publish/${roomId}`,
+      destination: `/app/chat/${roomId}`,
       body: JSON.stringify(message)
     })
 
@@ -103,9 +113,7 @@ export default function StompChatPage() {
       setToken(storedToken || '')
       
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/history/${roomId}`
-        )
+        const response = await api.get(`/chat/history/${roomId}`)
         setMessages(response.data)
       } catch (error) {
         console.error('Failed to load chat history:', error)
@@ -152,10 +160,10 @@ export default function StompChatPage() {
                     key={index}
                     style={{
                       marginBottom: '10px',
-                      textAlign: msg.senderEmail === senderEmail ? 'right' : 'left'
+                      textAlign: (msg.senderEmail || msg.senderName) === senderEmail ? 'right' : 'left'
                     }}
                   >
-                    <strong>{msg.senderEmail}:</strong> {msg.message}
+                    <strong>{msg.senderEmail || msg.senderName}:</strong> {msg.message || msg.content}
                   </div>
                 ))}
               </Box>

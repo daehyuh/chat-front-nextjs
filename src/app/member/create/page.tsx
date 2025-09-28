@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
 import {
   Container,
   Card,
@@ -28,10 +28,7 @@ export default function MemberCreate() {
         email,
         password
       }
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/member/create`,
-        data
-      )
+      await api.post('/member/create', data)
       
       router.push('/')
     } catch (error) {

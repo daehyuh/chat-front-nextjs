@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
 import {
   Container,
   Card,
@@ -28,6 +29,7 @@ interface Chat {
 export default function MyChatPage() {
   const [chatList, setChatList] = useState<Chat[]>([])
   const router = useRouter()
+  const { checkAuth } = useAuth()
 
   useEffect(() => {
     loadMyChats()
@@ -35,9 +37,7 @@ export default function MyChatPage() {
 
   const loadMyChats = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/my/rooms`
-      )
+      const response = await api.get('/chat/my/rooms')
       setChatList(response.data)
     } catch (error) {
       console.error('Failed to load my chats:', error)
@@ -50,9 +50,7 @@ export default function MyChatPage() {
 
   const leaveChatRoom = async (roomId: string) => {
     try {
-      await axios.delete(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat/room/group/${roomId}/leave`
-      )
+      await api.delete(`/chat/room/group/${roomId}/leave`)
       setChatList(chatList.filter(chat => chat.roomId !== roomId))
     } catch (error) {
       console.error('Failed to leave chat room:', error)

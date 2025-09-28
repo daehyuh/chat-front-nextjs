@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
 import { jwtDecode } from 'jwt-decode'
 import {
   Container,
@@ -24,10 +24,7 @@ export default function LoginPage() {
     
     try {
       const loginData = { email, password }
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/member/doLogin`,
-        loginData
-      )
+      const response = await api.post('/member/doLogin', loginData)
       console.log(response)
 
       const token = response.data.token
